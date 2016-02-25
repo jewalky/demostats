@@ -7,6 +7,7 @@ from versions.enums212 import *
 
 
 VERBOSE = False
+VERBOSEFLAG = False
 
 
 
@@ -39,8 +40,8 @@ def GetPlayerByName(name):
     
     
 def DEMOSTATS_FlagTaken(teamname, player):
-    if VERBOSE:
-        print('%s flag taken! (by: %s)' % (teamname, V_CleanPlayerName(player.userinfo.netname)))
+    if VERBOSE or VERBOSEFLAG:
+        print('%s flag %s! (by: %s)' % (teamname, 'taken' if not teamstates[teamname].flagwasdropped else 'picked up', V_CleanPlayerName(player.userinfo.netname)))
     # check if flag was dropped. if it was dropped, don't award touch.
     if not teamstates[teamname].flagwasdropped:
         player.stats_touches += 1
@@ -49,13 +50,17 @@ def DEMOSTATS_FlagTaken(teamname, player):
     
     
 def DEMOSTATS_FlagReturned(teamname, player):
-    if VERBOSE:
+    if player is None:
+        if VERBOSE or VERBOSEFLAG:
+            print('%s flag returned. (automatically)'%teamname)
+        return
+    if VERBOSE or VERBOSEFLAG:
         print('%s flag returned. (by: %s)' % (teamname, V_CleanPlayerName(player.userinfo.netname)))
     player.stats_returns += 1
     
     
 def DEMOSTATS_Capture(teamname, player):
-    if VERBOSE:
+    if VERBOSE or VERBOSEFLAG:
         print('%s team scores! (by: %s)' % (teamname, V_CleanPlayerName(player.userinfo.netname)))
     # captures aren't counted towards touches
     # find team which got this player as carrier
@@ -77,24 +82,33 @@ def DEMOSTATS_Assist(teamname, player):
     
     
 def DEMOSTATS_FlagDropped(teamname):
-    if VERBOSE:
+    if VERBOSE or VERBOSEFLAG:
         print('%s flag dropped. (last held by: %s)' % (teamname, V_CleanPlayerName(teamstates[teamname].flagheldby.userinfo.netname)))
     
     
 def DEMOSTATS_PlayerDied(deadplayer, player):
     # deadplayer is the one who died.
     # player is the one who killed.
-    #print('%s pkilled %s.' % (V_CleanPlayerName(player.userinfo.netname), V_CleanPlayerName(deadplayer.userinfo.netname)))
-    # too much flood
-    if deadplayer == player or player is None: # suicide or slime
-        return
-    player.stats_frags += 1
+    if VERBOSE:
+        if player is not None:
+            print('%s pkilled %s.' % (V_CleanPlayerName(player.userinfo.netname), V_CleanPlayerName(deadplayer.userinfo.netname)))
+        else:
+            print('%s died.' % (V_CleanPlayerName(deadplayer.userinfo.netname)))
+    if player is not None and deadplayer != player: # not suicide or slime
+        player.stats_frags += 1
     # check defend.
     # defend is when deadplayer was holding a flag, and player killed him.
     global teamstates
     for teamname in teamstates:
         if teamstates[teamname].flagheldby == deadplayer and player.lastteam == teamname:
             player.stats_defends += 1
+            if not VERBOSE and VERBOSEFLAG:
+                print('%s pkilled %s.' % (V_CleanPlayerName(player.userinfo.netname), V_CleanPlayerName(deadplayer.userinfo.netname)))
+            DEMOSTATS_FlagDropped(teamname)
+            teamstates[teamname].flagheldby = None
+            teamstates[teamname].flagwasdropped = True
+            teamstates[teamname].flagdropped = True
+            teamstates[teamname].flagtaken = False
     
     
 def DEMOSTATS_MapEnded():
@@ -102,25 +116,32 @@ def DEMOSTATS_MapEnded():
     for player in data.players:
         if player.ingame and not player.spectating:
             splayers.append(player)
-    if len(splayers) <= 0:
-        return
 
-    splayers = sorted(splayers, key=lambda splayer: splayer.stats_captures+splayer.stats_pcaptures, reverse=True)
-    splayers = sorted(splayers, key=lambda splayer: splayer.lastteam)
-    
-    print('===============================================================================')
-    print(' Player                          TEAM  CAP  TCH  PCAP  PKP  FRG  AST  DEF  RET')
-    print('-------------------------------------------------------------------------------')
-    
-    for player in splayers:
-        print('%-32s %-5s %-4d %-4d %-5d %-4d %-4d %-4d %-4d %-4d' %
-            (V_CleanPlayerName(player.userinfo.netname),
-             player.lastteam.upper(),
-             player.stats_captures+player.stats_pcaptures, player.stats_touches,
-             player.stats_pcaptures, player.stats_pickups,
-             player.stats_frags, player.stats_assists, player.stats_defends, player.stats_returns))
+    if len(splayers) > 0:
+        splayers = sorted(splayers, key=lambda splayer: splayer.stats_captures+splayer.stats_pcaptures, reverse=True)
+        splayers = sorted(splayers, key=lambda splayer: splayer.lastteam)
+        
+        print('===============================================================================')
+        print(' Player                          TEAM  CAP  TCH  PCAP  PKP  FRG  AST  DEF  RET')
+        print('-------------------------------------------------------------------------------')
+        
+        for player in splayers:
+            print('%-32s %-5s %-4d %-4d %-5d %-4d %-4d %-4d %-4d %-4d' %
+                (V_CleanPlayerName(player.userinfo.netname),
+                 player.lastteam.upper(),
+                 player.stats_captures+player.stats_pcaptures, player.stats_touches,
+                 player.stats_pcaptures, player.stats_pickups,
+                 player.stats_frags, player.stats_assists, player.stats_defends, player.stats_returns))
 
-    print('-------------------------------------------------------------------------------')
+        print('-------------------------------------------------------------------------------')
+        
+    # clear team states
+    teamstates['Red'] = TeamState()
+    teamstates['Blue'] = TeamState()
+    
+    # clear player states
+    for player in data.players:
+        DEMOSTATS_InitPlayer(player, forced=True)
     
     
 def DEMOSTATS_InitPlayer(player, forced=False):
@@ -163,12 +184,11 @@ def DEMOSTATS_Callback(packet):
         # display stats from last map
         DEMOSTATS_MapEnded()
         
-        # clear player stats
-        for player in players:
-            DEMOSTATS_InitPlayer(player, forced=True)
-        
         # print
         print('Current map is %s (changemap)' % (packet.map))
+        
+    elif packet.name == 'CLD_DEMOEND':
+        DEMOSTATS_MapEnded()
 
     elif packet.name == 'SVC_SETGAMEMODE':
         if packet.gamemode != GAMEMODE_CTF: #
@@ -237,21 +257,15 @@ def DEMOSTATS_Callback(packet):
             print('%s is now known as %s' % (V_CleanPlayerName(oldname), V_CleanPlayerName(userinfo.netname)))
             
     elif packet.name == 'SVC_TEAMFLAGRETURNED':
-        if lastplayername is not None and lasttic == leveltic:
-            teamname = teamnames[packet.team]
-            DEMOSTATS_FlagReturned(teamname, GetPlayerByName(lastplayername))
-            teamstates[teamname].flagtaken = False
-            teamstates[teamname].flagdropped = False
-            teamstates[teamname].flagwasdropped = False
-            teamstates[teamname].flagheldby = None
-            lastplayername = None
-            
-    elif packet.name == 'SVC_TEAMFLAGDROPPED':
         teamname = teamnames[packet.team]
-        DEMOSTATS_FlagDropped(teamname)
+        if lastplayername is not None and lasttic == leveltic:
+            DEMOSTATS_FlagReturned(teamname, GetPlayerByName(lastplayername))
+            lastplayername = None
+        else:
+            DEMOSTATS_FlagReturned(teamname, None)
         teamstates[teamname].flagtaken = False
-        teamstates[teamname].flagdropped = True
-        teamstates[teamname].flagwasdropped = True
+        teamstates[teamname].flagdropped = False
+        teamstates[teamname].flagwasdropped = False
         teamstates[teamname].flagheldby = None
             
     elif packet.name == 'SVC_PRINTHUDMESSAGEFADEOUT':
@@ -298,18 +312,34 @@ def DEMOSTATS_Callback(packet):
                         playernameassist = lines[1][13:]
                     else:
                         playernameassist = None
-                    DEMOSTATS_Capture(lastteamname, GetPlayerByName(playername))
+                    pl = GetPlayerByName(playername)
+                    DEMOSTATS_Capture(lastteamname, pl)
                     if playernameassist is not None:
                         DEMOSTATS_Assist(lastteamname, GetPlayerByName(playernameassist))
                     # check whatever team had the capturing player and release it's flag
                     for teamname in teamstates:
                         if teamstates[teamname].flagheldby is not None and\
-                           teamstates[teamname].flagheldby.userinfo.netname == playername:
+                           teamstates[teamname].flagheldby == pl:
                             teamstates[teamname].flagtaken = False
                             teamstates[teamname].flagdropped = False
                             teamstates[teamname].flagwasdropped = False
                             teamstates[teamname].flagheldby = None
                     lastteamname = None
+                    
+    elif packet.name == 'SVC_PLAYERSAY':
+        if VERBOSE:
+            player = players[packet.player]
+            mode = ''
+            if packet.mode == 2: # team
+                if player.spectating:
+                    mode = '<SPEC> '
+                else:
+                    mode = '<TEAM> '
+            if packet.string[:3] != '/me':
+                print('%s%s: %s'%(mode, V_CleanPlayerName(player.userinfo.netname), V_CleanPlayerName(V_ColorizeString(packet.string))))
+            else:
+                print('%s * %s%s'%(mode, V_CleanPlayerName(player.userinfo.netname), V_CleanPlayerName(V_ColorizeString(packet.string[3:]))))
+
     
 
 if __name__ != '__main__':
