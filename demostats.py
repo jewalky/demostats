@@ -115,6 +115,25 @@ def DEMOSTATS_PlayerDied(deadplayer, player):
             teamstates[teamname].flagwasdropped = True
             teamstates[teamname].flagdropped = True
             teamstates[teamname].flagtaken = False
+            
+            
+def DEMOSTATS_PlayerSpectated(player):
+    if VERBOSE:
+        print('%s has joined the spectators')
+    # drop the flag
+    global teamstates
+    for teamname in teamstates:
+        if teamstates[teamname].flagheldby == player:
+            DEMOSTATS_FlagDropped(teamname)
+            teamstates[teamname].flagheldby = None
+            teamstates[teamname].flagwasdropped = True
+            teamstates[teamname].flagdropped = True
+            teamstates[teamname].flagtaken = False
+    
+    
+def DEMOSTATS_PlayerJoined(teamname, player):
+    if VERBOSE:
+        print('%s has joined the %s team.'%(V_CleanPlayerName(player.userinfo.netname), teamname))
     
     
 def DEMOSTATS_MapEnded():
@@ -122,7 +141,7 @@ def DEMOSTATS_MapEnded():
     global leveltic
     splayers = []
     for player in data.players:
-        if player.ingame and not player.spectating:
+        if player.ingame and not player.wasspectating:
             splayers.append(player)
 
     if len(splayers) > 0:
@@ -175,6 +194,7 @@ def DEMOSTATS_InitPlayer(player, forced=False):
     player.stats_assists = 0
     player.stats_defends = 0
     player.stats_returns = 0
+    player.wasspectating = True
     
     
 lastteamname = None
@@ -232,11 +252,19 @@ def DEMOSTATS_Callback(packet):
         if packet.team < len(teamnames):
             players[packet.player].lastteam = teamnames[packet.team]
             players[packet.player].team = teamnames[packet.team]
+            DEMOSTATS_PlayerJoined(teamnames[packet.team], players[packet.player])
         else:
             players[packet.player].team = 'None'
             
     elif packet.name == 'SVC_SPAWNPLAYER':
+        cspec = not hasattr(players[packet.player], 'spectating') or players[packet.player].spectating
+        if cspec != packet.spectating:
+            DEMOSTATS_PlayerSpectated(players[packet.player])
         players[packet.player].spectating = packet.spectating # important!
+        if not players[packet.player].spectating:
+            players[packet.player].wasspectating = False
+        if not hasattr(players[packet.player], 'wasspectating'):
+            players[packet.player].wasspectating = True
         players[packet.player].bot = packet.bot
         players[packet.player].ingame = True
         players[packet.player].netid = packet.body_netid # this is used for frags
@@ -255,6 +283,9 @@ def DEMOSTATS_Callback(packet):
             DEMOSTATS_PlayerDied(deadplayer, player)
         
     elif packet.name == 'SVC_PLAYERISSPECTATOR':
+        cspec = not hasattr(players[packet.player], 'spectating') or players[packet.player].spectating
+        if cspec != True:
+            DEMOSTATS_PlayerSpectated(players[packet.player])
         players[packet.player].spectating = True
             
     elif packet.name == 'SVC_DISCONNECTPLAYER':
