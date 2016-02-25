@@ -102,6 +102,8 @@ def DEMOSTATS_PlayerDied(deadplayer, player):
             print('%s died.' % (V_CleanPlayerName(deadplayer.userinfo.netname)))
     if player is not None and deadplayer != player: # not suicide or slime
         player.stats_frags += 1
+    if deadplayer != player:
+        deadplayer.stats_deaths += 1
     # check defend.
     # defend is when deadplayer was holding a flag, and player killed him.
     global teamstates
@@ -149,20 +151,21 @@ def DEMOSTATS_MapEnded():
         splayers = sorted(splayers, key=lambda splayer: splayer.lastteam)
         
         print('===============================================================================')
-        print(' Player                          TEAM  CAP  TCH  PCAP  PKP  FRG  AST  DEF  RET')
+        print(' Player                     TEAM  CAP  TCH  PCAP  PKP  FRG  DTH  AST  DEF  RET')
         print('-------------------------------------------------------------------------------')
         
         for player in splayers:
             consolestar = ' '
             if player == players[data.consoleplayer]:
                 consolestar = '*'
-            print('%s%-31s %-5s %-4d %-4d %-5d %-4d %-4d %-4d %-4d %-4d' %
+            print('%s%-26s %-5s %-4d %-4d %-5d %-4d %-4d %-4d %-4d %-4d %-4d' %
                 (consolestar,
-                 V_CleanPlayerName(player.userinfo.netname),
+                 V_CleanPlayerName(player.userinfo.netname)[:26],
                  player.lastteam.upper(),
                  player.stats_captures+player.stats_pcaptures, player.stats_touches,
                  player.stats_pcaptures, player.stats_pickups,
-                 player.stats_frags, player.stats_assists, player.stats_defends, player.stats_returns))
+                 player.stats_frags, player.stats_deaths,
+                 player.stats_assists, player.stats_defends, player.stats_returns))
 
         print('-------------------------------------------------------------------------------')
         print(' MAP: %s' % levelname.upper())
@@ -189,6 +192,7 @@ def DEMOSTATS_InitPlayer(player, forced=False):
     player.stats_captures = 0
     player.stats_pcaptures = 0
     player.stats_frags = 0
+    player.stats_deaths = 0
     player.stats_pickups = 0
     player.stats_touches = 0
     player.stats_assists = 0
