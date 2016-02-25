@@ -150,14 +150,14 @@ def DEMOSTATS_MapEnded():
         splayers = sorted(splayers, key=lambda splayer: splayer.lastteam)
         
         print('===============================================================================')
-        print(' Player                     TEAM  CAP  TCH  PCAP  PKP  FRG  DTH  AST  DEF  RET')
+        print(' Player                             TEAM  CAP TCH PCAP PKP FRG DTH AST DEF RET')
         print('-------------------------------------------------------------------------------')
         
         for player in splayers:
             consolestar = ' '
             if player == players[data.consoleplayer]:
                 consolestar = '*'
-            print('%s%-26s %-5s %-4d %-4d %-5d %-4d %-4d %-4d %-4d %-4d %-4d' %
+            print('%s%-34s %-5s %-3d %-3d %-4d %-3d %-3d %-3d %-3d %-3d %-3d' %
                 (consolestar,
                  V_CleanPlayerName(player.userinfo.netname)[:26],
                  player.lastteam.upper(),
