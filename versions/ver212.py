@@ -83,7 +83,7 @@ def next_packet(stream):
         print('Connected!')
         pkt['map'] = NETWORK_ReadString(stream)
         pkt['gametic'] = NETWORK_ReadULong(stream)
-        print('Current map is %s'%pkt['map'])
+        print('Current map is %s'%pkt['map'].upper())
         CLIENT_ClearAllPlayers()
         return pkt
         

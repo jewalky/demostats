@@ -10,6 +10,10 @@ VERBOSE = False
 VERBOSEFLAG = False
 
 
+# map stuff
+levelname = None
+levelreturns = 0
+
 
 lastlocaluserinfo = None
 
@@ -50,9 +54,11 @@ def DEMOSTATS_FlagTaken(teamname, player):
     
     
 def DEMOSTATS_FlagReturned(teamname, player):
+    global levelreturns
     if player is None:
         if VERBOSE or VERBOSEFLAG:
             print('%s flag returned. (automatically)'%teamname)
+        levelreturns += 1
         return
     if VERBOSE or VERBOSEFLAG:
         print('%s flag returned. (by: %s)' % (teamname, V_CleanPlayerName(player.userinfo.netname)))
@@ -112,6 +118,8 @@ def DEMOSTATS_PlayerDied(deadplayer, player):
     
     
 def DEMOSTATS_MapEnded():
+    global levelreturns
+    global leveltic
     splayers = []
     for player in data.players:
         if player.ingame and not player.spectating:
@@ -126,13 +134,22 @@ def DEMOSTATS_MapEnded():
         print('-------------------------------------------------------------------------------')
         
         for player in splayers:
-            print('%-32s %-5s %-4d %-4d %-5d %-4d %-4d %-4d %-4d %-4d' %
-                (V_CleanPlayerName(player.userinfo.netname),
+            consolestar = ' '
+            if player == players[data.consoleplayer]:
+                consolestar = '*'
+            print('%s%-31s %-5s %-4d %-4d %-5d %-4d %-4d %-4d %-4d %-4d' %
+                (consolestar,
+                 V_CleanPlayerName(player.userinfo.netname),
                  player.lastteam.upper(),
                  player.stats_captures+player.stats_pcaptures, player.stats_touches,
                  player.stats_pcaptures, player.stats_pickups,
                  player.stats_frags, player.stats_assists, player.stats_defends, player.stats_returns))
 
+        print('-------------------------------------------------------------------------------')
+        print(' MAP: %s' % levelname.upper())
+        leveltime = float(leveltic) / 35
+        print(' Time: %d:%02d' % (int(leveltime / 60), int(leveltime % 60)))
+        print(' Automatic returns: %d' % levelreturns)
         print('-------------------------------------------------------------------------------')
         
     # clear team states
@@ -142,6 +159,8 @@ def DEMOSTATS_MapEnded():
     # clear player states
     for player in data.players:
         DEMOSTATS_InitPlayer(player, forced=True)
+    levelreturns = 0
+    leveltic = 0
     
     
 def DEMOSTATS_InitPlayer(player, forced=False):
@@ -172,6 +191,7 @@ def DEMOSTATS_Callback(packet):
     global lastplayername
     global lasttic
     global leveltic
+    global levelname
     
     if packet.name != 'CLD_TICCMD' and packet.name != 'SVC_MOVEPLAYER' and packet.name != 'SVC_MOVELOCALPLAYER':
         #print(repr(packet))
@@ -180,12 +200,16 @@ def DEMOSTATS_Callback(packet):
     if packet.name == 'CLD_TICCMD':
         leveltic += 1
         
+    elif packet.name == 'SVC_SETMAPTIME':
+        leveltic = packet.tics
+        
     elif packet.name == 'SVC_MAPLOAD':
         # display stats from last map
         DEMOSTATS_MapEnded()
         
         # print
-        print('Current map is %s (changemap)' % (packet.map))
+        levelname = packet.map
+        print('Current map is %s (changemap)' % (packet.map.upper()))
         
     elif packet.name == 'CLD_DEMOEND':
         DEMOSTATS_MapEnded()
@@ -198,7 +222,8 @@ def DEMOSTATS_Callback(packet):
     elif packet.name == 'SVCC_AUTHENTICATE':
         # display stats from last map
         DEMOSTATS_MapEnded()
-    
+        
+        levelname = packet.map
         # restore local userinfo
         if lastlocaluserinfo is not None:
             DEMOSTATS_Callback(lastlocaluserinfo)
@@ -310,6 +335,8 @@ def DEMOSTATS_Callback(packet):
                     playername = lines[0][11:]
                     if len(lines) > 1 and lines[1].find('Assisted by: ') == 0:
                         playernameassist = lines[1][13:]
+                    elif len(lines) > 1 and lines[1] == '[ Self-Assisted ]':
+                        playernameassist = playername
                     else:
                         playernameassist = None
                     pl = GetPlayerByName(playername)
