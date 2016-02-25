@@ -221,7 +221,8 @@ def DEMOSTATS_Callback(packet):
         leveltic += 1
         
     elif packet.name == 'SVC_SETMAPTIME':
-        leveltic = packet.tics
+        if packet.tics > leveltic:
+            leveltic = packet.tics
         
     elif packet.name == 'SVC_MAPLOAD':
         # display stats from last map
