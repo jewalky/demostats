@@ -44,6 +44,8 @@ def DEMOSTATS_FlagTaken(teamname, player):
     # check if flag was dropped. if it was dropped, don't award touch.
     if not teamstates[teamname].flagwasdropped:
         player.stats_touches += 1
+    else:
+        player.stats_pickups += 1
     
     
 def DEMOSTATS_FlagReturned(teamname, player):
@@ -56,11 +58,16 @@ def DEMOSTATS_Capture(teamname, player):
     if VERBOSE:
         print('%s team scores! (by: %s)' % (teamname, V_CleanPlayerName(player.userinfo.netname)))
     # captures aren't counted towards touches
-    if not teamstates[teamname].flagwasdropped:
-        player.stats_touches -= 1
-        player.stats_captures += 1
+    # find team which got this player as carrier
+    team2 = None
+    for teamname2 in teamstates:
+        if teamstates[teamname2].flagheldby == player:
+            team2 = teamstates[teamname2]
+            break
+    if team2.flagwasdropped:
+        player.stats_pcaptures += 1
     else:
-        player.stats_pickups += 1
+        player.stats_captures += 1
     
     
 def DEMOSTATS_Assist(teamname, player):
@@ -98,21 +105,22 @@ def DEMOSTATS_MapEnded():
     if len(splayers) <= 0:
         return
 
-    splayers = sorted(splayers, key=lambda splayer: splayer.stats_captures+splayer.stats_pickups, reverse=True)
+    splayers = sorted(splayers, key=lambda splayer: splayer.stats_captures+splayer.stats_pcaptures, reverse=True)
     splayers = sorted(splayers, key=lambda splayer: splayer.lastteam)
     
-    print('=========================================================================')
-    print(' Player                          TEAM  CPT  FRG  PKP  TCH  AST  DEF  RET')
-    print('-------------------------------------------------------------------------')
+    print('===============================================================================')
+    print(' Player                          TEAM  CAP  TCH  PCAP  PKP  FRG  AST  DEF  RET')
+    print('-------------------------------------------------------------------------------')
     
     for player in splayers:
-        print('%-32s %-5s %-4d %-4d %-4d %-4d %-4d %-4d %-4d' %
+        print('%-32s %-5s %-4d %-4d %-5d %-4d %-4d %-4d %-4d %-4d' %
             (V_CleanPlayerName(player.userinfo.netname),
              player.lastteam.upper(),
-             player.stats_captures, player.stats_frags, player.stats_pickups, player.stats_touches,
-             player.stats_assists, player.stats_defends, player.stats_returns))
+             player.stats_captures+player.stats_pcaptures, player.stats_touches,
+             player.stats_pcaptures, player.stats_pickups,
+             player.stats_frags, player.stats_assists, player.stats_defends, player.stats_returns))
 
-    print('-------------------------------------------------------------------------')
+    print('-------------------------------------------------------------------------------')
     
     
 def DEMOSTATS_InitPlayer(player, forced=False):
@@ -120,6 +128,7 @@ def DEMOSTATS_InitPlayer(player, forced=False):
     if hasattr(player, 'stats_captures') and not forced:
         return
     player.stats_captures = 0
+    player.stats_pcaptures = 0
     player.stats_frags = 0
     player.stats_pickups = 0
     player.stats_touches = 0
@@ -154,12 +163,9 @@ def DEMOSTATS_Callback(packet):
         # display stats from last map
         DEMOSTATS_MapEnded()
         
-        # clear players
-        CLIENT_ClearAllPlayers()
-        
-        # restore local userinfo
-        if lastlocaluserinfo is not None:
-            DEMOSTATS_Callback(lastlocaluserinfo)
+        # clear player stats
+        for player in players:
+            DEMOSTATS_InitPlayer(player, forced=True)
         
         # print
         print('Current map is %s (changemap)' % (packet.map))
