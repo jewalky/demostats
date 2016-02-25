@@ -100,10 +100,9 @@ def DEMOSTATS_PlayerDied(deadplayer, player):
             print('%s pkilled %s.' % (V_CleanPlayerName(player.userinfo.netname), V_CleanPlayerName(deadplayer.userinfo.netname)))
         else:
             print('%s died.' % (V_CleanPlayerName(deadplayer.userinfo.netname)))
-    if player is not None and deadplayer != player: # not suicide or slime
+    if player is not None:
         player.stats_frags += 1
-    if deadplayer != player:
-        deadplayer.stats_deaths += 1
+    deadplayer.stats_deaths += 1
     # check defend.
     # defend is when deadplayer was holding a flag, and player killed him.
     global teamstates
