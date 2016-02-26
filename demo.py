@@ -6,8 +6,17 @@ from data import *
 import sys
 import os
 
+stream = None
+
+def CLIENTDEMO_GetStreamPos():
+    global stream
+    try:
+        return stream.tell()
+    except:
+        return -1
 
 def CLIENTDEMO_Read(fn, callback):
+    global stream
     stream = open(fn, 'rb')
 
     # read demo header, assume its always the same

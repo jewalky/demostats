@@ -231,8 +231,11 @@ def DEMOSTATS_Callback(packet):
     global levelname
     
     if packet.name != 'CLD_TICCMD' and packet.name != 'SVC_MOVEPLAYER' and packet.name != 'SVC_MOVELOCALPLAYER':
-        #print(repr(packet))
-        pass
+        try:
+            p = repr(packet)
+            print(p)
+        except:
+            print('FAILED TO PRINT PACKET %s %02X @ %X' % (packet.name, packet.id, CLIENTDEMO_GetStreamPos()))
         
     if packet.name == 'CLD_TICCMD':
         leveltic += 1

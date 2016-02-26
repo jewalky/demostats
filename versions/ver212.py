@@ -1240,7 +1240,6 @@ def next_packet(stream):
         pkt['direction'] = NETWORK_ReadUByte(stream)
         pkt['speed'] = FIXED2FLOAT(NETWORK_ReadLong(stream))
         pkt['floordestdist'] = FIXED2FLOAT(NETWORK_ReadLong(stream))
-        pkt['hexencrush'] = NETWORK_ReadUByte(stream) != 0
         pkt['floorid'] = NETWORK_ReadShort(stream)
         return pkt
         
