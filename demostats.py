@@ -233,7 +233,7 @@ def DEMOSTATS_Callback(packet):
     if packet.name != 'CLD_TICCMD' and packet.name != 'SVC_MOVEPLAYER' and packet.name != 'SVC_MOVELOCALPLAYER':
         try:
             p = repr(packet)
-            print(p)
+            #print(p)
         except:
             print('FAILED TO PRINT PACKET %s %02X @ %X' % (packet.name, packet.id, CLIENTDEMO_GetStreamPos()))
         
