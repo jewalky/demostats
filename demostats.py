@@ -130,6 +130,20 @@ def DEMOSTATS_PlayerSpectated(player):
             teamstates[teamname].flagwasdropped = True
             teamstates[teamname].flagdropped = True
             teamstates[teamname].flagtaken = False
+            
+
+def DEMOSTATS_PlayerDisconnected(player):
+    if VERBOSE:
+        print('%s disconnected')
+    # drop the flag
+    global teamstates
+    for teamname in teamstates:
+        if teamstates[teamname].flagheldby == player:
+            DEMOSTATS_FlagDropped(teamname)
+            teamstates[teamname].flagheldby = None
+            teamstates[teamname].flagwasdropped = True
+            teamstates[teamname].flagdropped = True
+            teamstates[teamname].flagtaken = False
     
     
 def DEMOSTATS_PlayerJoined(teamname, player):
@@ -293,6 +307,7 @@ def DEMOSTATS_Callback(packet):
         players[packet.player].spectating = True
             
     elif packet.name == 'SVC_DISCONNECTPLAYER':
+        DEMOSTATS_PlayerDisconnected(players[packet.player])
         players[packet.player] = Player()
         
     elif packet.name == 'SVC_SETCONSOLEPLAYER':
