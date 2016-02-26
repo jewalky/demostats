@@ -1240,11 +1240,9 @@ def next_packet(stream):
         pkt['direction'] = NETWORK_ReadUByte(stream)
         pkt['speed'] = FIXED2FLOAT(NETWORK_ReadLong(stream))
         pkt['floordestdist'] = FIXED2FLOAT(NETWORK_ReadLong(stream))
-        #pkt['floorid'] = NETWORK_ReadShort(stream)
-        pkt['floorid'] = NETWORK_ReadLong(stream)
-        # apparently after a DOFLOOR there's random 5 byte sequence: 00 00 C3 00 00
-        # actually, the last 3 bytes are SVC_STARTFLOORSOUND command.
-        # what's the "00 00" is not known. I'm just reading long instead of short here.
+        pkt['crush'] = NETWORK_ReadByte(stream)
+        pkt['hexencrush'] = NETWORK_ReadUByte(stream) != 0
+        pkt['floorid'] = NETWORK_ReadShort(stream)
         return pkt
         
     elif lCommand == SVC_DESTROYFLOOR:
