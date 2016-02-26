@@ -105,9 +105,13 @@ def CLIENTDEMO_Read(fn, callback):
             
         else:
             stream.seek(stream.tell()-1)
-            pkt = mod_parse_header(stream)
-            if pkt is None:
-                raise DemoError('Unknown demo header %02X (%d)' % (lCommand, lCommand))
+            try:
+                pkt = mod_parse_header(stream)
+                if pkt is None:
+                    raise DemoError('Unknown demo header %02X (%d)' % (lCommand, lCommand))
+            except:
+                print('Exception @ %X' % CLIENTDEMO_GetStreamPos())
+                raise
             # run callback on packet?..
             # yup
             callback(Struct(**pkt))
@@ -121,9 +125,13 @@ def CLIENTDEMO_Read(fn, callback):
             print('Demo ended.')
             break
         stream.seek(stream.tell()-1)
-        pkt = mod_parse(stream)
-        if pkt is None:
-            raise DemoError('Unknown demo packet %02X (%d)' % (lCommand, lCommand))
+        try:
+            pkt = mod_parse(stream)
+            if pkt is None:
+                raise DemoError('Unknown demo packet %02X (%d)' % (lCommand, lCommand))
+        except:
+            print('Exception @ %X' % CLIENTDEMO_GetStreamPos())
+            raise
         # run callback on packet
         callback(Struct(**pkt))
         if pkt['name'] == 'CLD_DEMOEND':
