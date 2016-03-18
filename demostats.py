@@ -9,6 +9,28 @@ from versions.enums212 import *
 VERBOSE = False
 VERBOSEFLAG = False
 
+#TEAM  CAP TCH PCAP PKP FRG DTH AST DEF RET
+ORDERINGSUP = ['team', 'cap', 'tch', 'pcap', 'pkp', 'frg', 'dth', 'ast', 'def', 'ret']
+ORDERING = ORDERINGSUP
+SIZES = {'team': 5}
+
+
+import sys
+i = -1
+while i+1 < len(sys.argv):
+    i += 1
+    arg = sys.argv[i]
+    if arg[0:11] == '--ordering=':
+        lordering = arg[11:].split(',')
+        ORDERING = []
+        for ordc in lordering:
+            ordc = ordc.strip().lower()
+            if ordc not in ORDERINGSUP:
+                print('Warning: unsupported column: %s'%(ordc))
+            ORDERING.append(ordc)
+        sys.argv = sys.argv[:i] + sys.argv[i+1:]
+        i -= 1
+
 
 # map stuff
 levelname = None
@@ -120,7 +142,7 @@ def DEMOSTATS_PlayerDied(deadplayer, player):
             
 def DEMOSTATS_PlayerSpectated(player):
     if VERBOSE:
-        print('%s has joined the spectators')
+        print('%s has joined the spectators' % V_CleanPlayerName(player.userinfo.netname))
     # drop the flag
     global teamstates
     for teamname in teamstates:
@@ -134,7 +156,7 @@ def DEMOSTATS_PlayerSpectated(player):
 
 def DEMOSTATS_PlayerDisconnected(player):
     if VERBOSE:
-        print('%s disconnected')
+        print('%s disconnected' % V_CleanPlayerName(player.userinfo.netname))
     # drop the flag
     global teamstates
     for teamname in teamstates:
@@ -152,6 +174,8 @@ def DEMOSTATS_PlayerJoined(teamname, player):
     
     
 def DEMOSTATS_MapEnded():
+    global ORDERING
+    global SIZES
     global levelreturns
     global leveltic
     splayers = []
@@ -164,21 +188,40 @@ def DEMOSTATS_MapEnded():
         splayers = sorted(splayers, key=lambda splayer: splayer.lastteam)
         
         print('===============================================================================')
-        print(' Player                             TEAM  CAP TCH PCAP PKP FRG DTH AST DEF RET')
+        #print(' Player                             TEAM  CAP TCH PCAP PKP FRG DTH AST DEF RET')
+        ordc = ''
+        for ordce in ORDERING:
+            csize = len(ordce)+1
+            if ordce in SIZES:
+                csize = max(csize, SIZES[ordce]+1)
+            ordc += ordce.upper().ljust(csize)
+        print(' Player                             '+ordc)
         print('-------------------------------------------------------------------------------')
         
         for player in splayers:
             consolestar = ' '
             if player == players[data.consoleplayer]:
                 consolestar = '*'
-            print('%s%-34s %-5s %-3d %-3d %-4d %-3d %-3d %-3d %-3d %-3d %-3d' %
+            pdata = {'team': player.lastteam.upper(),
+                     'cap': player.stats_captures+player.stats_pcaptures,
+                     'tch': player.stats_touches,
+                     'pcap': player.stats_pcaptures,
+                     'pkp': player.stats_pickups,
+                     'frg': player.stats_frags,
+                     'dth': player.stats_deaths,
+                     'ast': player.stats_assists,
+                     'def': player.stats_defends,
+                     'ret': player.stats_returns}
+            ordp = ''
+            for ordce in ORDERING:
+                csize = len(ordce)+1
+                if ordce in SIZES:
+                    csize = max(csize, SIZES[ordce]+1)
+                ordp += str(pdata[ordce]).ljust(csize)
+            print('%s%-34s %s' %
                 (consolestar,
                  V_CleanPlayerName(player.userinfo.netname)[:26],
-                 player.lastteam.upper(),
-                 player.stats_captures+player.stats_pcaptures, player.stats_touches,
-                 player.stats_pcaptures, player.stats_pickups,
-                 player.stats_frags, player.stats_deaths,
-                 player.stats_assists, player.stats_defends, player.stats_returns))
+                 ordp))
 
         print('-------------------------------------------------------------------------------')
         print(' MAP: %s' % levelname.upper())
@@ -246,11 +289,18 @@ def DEMOSTATS_Callback(packet):
         
     elif packet.name == 'SVC_MAPLOAD':
         # display stats from last map
-        DEMOSTATS_MapEnded()
+        #DEMOSTATS_MapEnded()
         
         # print
         levelname = packet.map
         print('Current map is %s (changemap)' % (packet.map.upper()))
+        
+    elif packet.name == 'SVC_MAPEXIT':
+        # display stats from THIS map
+        DEMOSTATS_MapEnded()
+        
+        # print
+        print('Level exited.')
         
     elif packet.name == 'CLD_DEMOEND':
         DEMOSTATS_MapEnded()
