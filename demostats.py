@@ -30,6 +30,13 @@ while i+1 < len(sys.argv):
             ORDERING.append(ordc)
         sys.argv = sys.argv[:i] + sys.argv[i+1:]
         i -= 1
+    elif arg == '--verbose' or arg == '--verboseflag':
+        if arg == '--verbose':
+            VERBOSE = True
+        else:
+            VERBOSEFLAG = True
+        sys.argv = sys.argv[:i] + sys.argv[i+1:]
+        i -= 1
 
 
 # map stuff
@@ -365,9 +372,11 @@ def DEMOSTATS_Callback(packet):
         
     elif packet.name == 'SVC_SETCONSOLEPLAYER':
         oldconsoleplayer = data.consoleplayer
-        data.consoleplayer = packet.player
-        players[data.consoleplayer] = players[oldconsoleplayer]
-        players[oldconsoleplayer] = Player()
+        if packet.player != data.consoleplayer:
+            data.consoleplayer = packet.player
+            players[data.consoleplayer] = players[oldconsoleplayer]
+            players[oldconsoleplayer] = Player()
+        print('Console player is %d.'%(data.consoleplayer))
         
     elif packet.name == 'CLD_USERINFO' or packet.name == 'SVC_SETPLAYERUSERINFO':
         # update userinfo. currently only care about the name
@@ -379,10 +388,11 @@ def DEMOSTATS_Callback(packet):
             DEMOSTATS_InitPlayer(players[data.consoleplayer])
             lastlocaluserinfo = packet
 
-        oldname = userinfo.netname
-        userinfo.netname = packet.userinfo['name']
-        if oldname is not None and userinfo.netname.lower() != oldname.lower():
-            print('%s is now known as %s' % (V_CleanPlayerName(oldname), V_CleanPlayerName(userinfo.netname)))
+        if 'name' in packet.userinfo:
+            oldname = userinfo.netname
+            userinfo.netname = packet.userinfo['name']
+            if oldname is not None and userinfo.netname.lower() != oldname.lower():
+                print('%s is now known as %s' % (V_CleanPlayerName(oldname), V_CleanPlayerName(userinfo.netname)))
             
     elif packet.name == 'SVC_TEAMFLAGRETURNED':
         teamname = teamnames[packet.team]

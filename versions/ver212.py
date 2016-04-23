@@ -40,15 +40,28 @@ def next_header(stream):
         print('Protected lump checksum: %s'%demoHash)
         print('Map checksum: %s'%demoMapHash)
         return pkt
+        
+    elif lCommand == CLD_BODYSTART:
+        return pkt
 
     return None
 
     
+commandsdone = []
 def next_packet(stream):
+    global commandsdone
     lCommand = NETWORK_ReadUByte(stream)
     
     pkt = {'name': enums.to_string(enums212, lCommand, ['CLD_', 'SVC_', 'SVCC_']),
            'id': lCommand}
+    
+    """    
+    if pkt['name'] != 'SVC_MOVEPLAYER' and pkt['name'] != 'CLD_TICCMD' and pkt['name'] != 'SVC_MOVELOCALPLAYER':
+        print(repr(pkt))
+        if pkt['name'] not in commandsdone:
+            print('^^^ NEW COMMAND!!!! @ %X'%(CLIENTDEMO_GetStreamPos()))
+            commandsdone.append(pkt['name'])
+    """
     
     if lCommand == CLD_USERINFO:
         stream.seek(stream.tell()-1)
@@ -65,7 +78,7 @@ def next_packet(stream):
         pkt['lcmd_name'] = enums.to_string(enums212, LCMD, ['LCMD_'])
         pkt['lcmd'] = LCMD
         if LCMD == LCMD_INVUSE:
-            pkt['item'] = NETWORK_ReadString(stream)
+            pkt['itemname'] = NETWORK_ReadString(stream)
         elif LCMD == LCMD_CENTERVIEW:
             pass
         elif LCMD == LCMD_TAUNT:
@@ -1673,7 +1686,6 @@ def next_packet(stream):
             pkt['persteptime'] = NETWORK_ReadLong(stream)
             pkt['floorid'] = NETWORK_ReadShort(stream)
             return pkt
-
             
     
 ###########################################
