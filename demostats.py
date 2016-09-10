@@ -104,6 +104,13 @@ def DEMOSTATS_Capture(teamname, player):
         if teamstates[teamname2].flagheldby == player:
             team2 = teamstates[teamname2]
             break
+    if team2 is None:
+        for teamname2 in teamstates:
+            if teamname2.lower() == teamname.lower():
+                team2 = teamstates[teamname2]
+                break
+    if team2 is None:
+        return # (zzz capture packet earlier than player list)
     if team2.flagwasdropped:
         player.stats_pcaptures += 1
     else:
@@ -180,14 +187,19 @@ def DEMOSTATS_PlayerJoined(teamname, player):
         print('%s has joined the %s team.'%(V_CleanPlayerName(player.userinfo.netname), teamname))
     
     
+dcplayers = []
 def DEMOSTATS_MapEnded():
     global ORDERING
     global SIZES
     global levelreturns
     global leveltic
+    global dcplayers
     splayers = []
     for player in data.players:
         if player.ingame and not player.wasspectating:
+            splayers.append(player)
+    for player in dcplayers:
+        if DEMOSTATS_CheckHaveStats(player) and player.ingame and not player.wasspectating:
             splayers.append(player)
 
     if len(splayers) > 0:
@@ -246,6 +258,11 @@ def DEMOSTATS_MapEnded():
         DEMOSTATS_InitPlayer(player, forced=True)
     levelreturns = 0
     leveltic = 0
+    dcplayers = []
+    
+    
+def DEMOSTATS_CheckHaveStats(player):
+    return hasattr(player, 'stats_captures')
     
     
 def DEMOSTATS_InitPlayer(player, forced=False):
@@ -368,6 +385,8 @@ def DEMOSTATS_Callback(packet):
             
     elif packet.name == 'SVC_DISCONNECTPLAYER':
         DEMOSTATS_PlayerDisconnected(players[packet.player])
+        global dcplayers
+        dcplayers.append(players[packet.player])
         players[packet.player] = Player()
         
     elif packet.name == 'SVC_SETCONSOLEPLAYER':
